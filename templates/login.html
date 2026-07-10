@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 智慧护理培训数据分析系统</title>
+    <style>
+        :root {
+            --ink: #17202a;
+            --muted: #667085;
+            --line: #d7dee8;
+            --blue: #2364aa;
+            --bg: #eef3f7;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+        }
+
+        .shell {
+            width: min(960px, calc(100vw - 32px));
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            background: #ffffff;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 18px 42px rgba(23, 32, 42, 0.08);
+        }
+
+        .intro {
+            padding: 42px;
+            background: #f8fafc;
+            border-right: 1px solid var(--line);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 30px;
+            line-height: 40px;
+            letter-spacing: 0;
+        }
+
+        .intro p {
+            margin: 14px 0 0;
+            color: var(--muted);
+            line-height: 24px;
+            font-size: 14px;
+        }
+
+        .roles {
+            display: grid;
+            gap: 10px;
+            margin-top: 28px;
+        }
+
+        .role {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #ffffff;
+            padding: 12px;
+            font-size: 13px;
+        }
+
+        .role strong { display: block; margin-bottom: 5px; }
+        .role span { color: var(--muted); }
+
+        form {
+            padding: 42px 34px;
+        }
+
+        h2 {
+            margin: 0 0 22px;
+            font-size: 22px;
+        }
+
+        label {
+            display: block;
+            color: var(--muted);
+            font-size: 13px;
+            margin: 14px 0 7px;
+        }
+
+        input {
+            width: 100%;
+            height: 40px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            padding: 0 11px;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            height: 40px;
+            margin-top: 22px;
+            border: 1px solid var(--blue);
+            border-radius: 7px;
+            background: var(--blue);
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .error {
+            min-height: 20px;
+            margin-top: 12px;
+            color: #b42318;
+            font-size: 13px;
+        }
+
+        @media (max-width: 820px) {
+            .shell { grid-template-columns: 1fr; }
+            .intro { border-right: 0; border-bottom: 1px solid var(--line); }
+        }
+    </style>
+</head>
+<body>
+    <section class="shell">
+        <div class="intro">
+            <h1>智慧护理培训数据分析系统</h1>
+            <p>基于 Spark、MySQL、HDFS 的护理培训数据分析平台，支持不同角色查看课程效果、薄弱环节和高风险学员。</p>
+            <div class="roles">
+                <div class="role">
+                    <strong>管理员：admin / admin123</strong>
+                    <span>查看全局指标、课程分析、风险学员和资源趋势。</span>
+                </div>
+                <div class="role">
+                    <strong>培训教师：teacher / teacher123</strong>
+                    <span>查看负责标签下的课程效果、薄弱项和风险学员。</span>
+                </div>
+                <div class="role">
+                    <strong>机构负责人：org / org123</strong>
+                    <span>查看本机构高风险学员和培训建议。</span>
+                </div>
+            </div>
+        </div>
+        <form method="post" action="/login">
+            <h2>账号登录</h2>
+            <label for="username">账号</label>
+            <input id="username" name="username" autocomplete="username" required>
+            <label for="password">密码</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required>
+            <button type="submit">登录</button>
+            <div class="error">{{ error }}</div>
+        </form>
+    </section>
+</body>
+</html>
