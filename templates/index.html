@@ -229,6 +229,48 @@
             height: 318px;
         }
 
+        .insight-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(160px, 1fr));
+            gap: 12px;
+        }
+
+        .insight {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fbfdff;
+            padding: 14px;
+            min-height: 112px;
+        }
+
+        .insight span {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 18px;
+        }
+
+        .insight strong {
+            display: block;
+            margin-top: 8px;
+            font-size: 22px;
+            line-height: 28px;
+        }
+
+        .insight p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 18px;
+        }
+
+        .table-scroll {
+            max-height: 430px;
+            overflow: auto;
+            border: 1px solid #e7ebf0;
+            border-radius: 8px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -246,6 +288,9 @@
             color: #475467;
             font-weight: 600;
             background: #f8fafc;
+            position: sticky;
+            top: 0;
+            z-index: 1;
         }
 
         tbody tr:hover { background: #f8fafc; }
@@ -313,6 +358,7 @@
             .metrics,
             .recommendations { grid-template-columns: 1fr; }
             .chart { height: 280px; }
+            .insight-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -383,6 +429,13 @@
                     </div>
                     <div class="chart" id="scoreChart"></div>
                 </div>
+            </div>
+            <div class="panel" style="margin-top: 14px;">
+                <div class="panel-head">
+                    <h2>当前视角重点提醒</h2>
+                    <span class="hint">结合课程表现与风险清单生成</span>
+                </div>
+                <div class="recommendations" id="overviewRecommendations"></div>
             </div>
         </section>
 
@@ -470,6 +523,17 @@
             return charts[id];
         }
 
+        function resetChartContainer(id, className = "chart") {
+            if (charts[id]) {
+                charts[id].dispose();
+                delete charts[id];
+            }
+            const element = document.getElementById(id);
+            element.className = className;
+            element.innerHTML = "";
+            return element;
+        }
+
         function filteredCourses() {
             return state.raw.course_effect.filter(item => {
                 return (state.category === "全部" || item.category === state.category)
@@ -529,6 +593,7 @@
                 return;
             }
             document.getElementById("courseTable").innerHTML = `
+                <div class="table-scroll">
                 <table>
                     <thead>
                         <tr>
@@ -553,6 +618,7 @@
                         `).join("")}
                     </tbody>
                 </table>
+                </div>
             `;
         }
 
@@ -563,6 +629,7 @@
                 return;
             }
             document.getElementById("riskTable").innerHTML = `
+                <div class="table-scroll">
                 <table>
                     <thead>
                         <tr>
@@ -589,7 +656,50 @@
                         `).join("")}
                     </tbody>
                 </table>
+                </div>
             `;
+        }
+
+        function renderCourseEffect(courseRows) {
+            if (courseRows.length < 2) {
+                const element = resetChartContainer("courseChart", "insight-grid");
+                if (!courseRows.length) {
+                    element.innerHTML = `<div class="empty">当前视角下没有课程数据。</div>`;
+                    return;
+                }
+                const row = courseRows[0];
+                element.innerHTML = `
+                    <div class="insight">
+                        <span>当前课程</span>
+                        <strong>${row.course_name}</strong>
+                        <p>${row.category} / ${row.tag}</p>
+                    </div>
+                    <div class="insight">
+                        <span>平均成绩</span>
+                        <strong>${Number(row.avg_score).toFixed(2)} 分</strong>
+                        <p>通过率 ${percent(row.pass_rate)}</p>
+                    </div>
+                    <div class="insight">
+                        <span>学习表现</span>
+                        <strong>${percent(row.avg_progress)}</strong>
+                        <p>${number(row.learners)} 名学员，累计 ${number(row.study_minutes)} 分钟</p>
+                    </div>
+                `;
+                return;
+            }
+
+            resetChartContainer("courseChart");
+            upsertChart("courseChart", {
+                tooltip: { trigger: "axis" },
+                legend: { top: 0 },
+                grid: { left: 42, right: 20, top: 44, bottom: 72 },
+                xAxis: { type: "category", data: courseRows.map(item => item.course_name), axisLabel: { rotate: 28, interval: 0 } },
+                yAxis: [{ type: "value", name: "分/百分比" }],
+                series: [
+                    { name: "平均成绩", type: "bar", data: courseRows.map(item => item.avg_score), itemStyle: { color: "#2364aa" } },
+                    { name: "通过率", type: "line", data: courseRows.map(item => item.pass_rate), itemStyle: { color: "#2f855a" } }
+                ]
+            });
         }
 
         function renderRecommendations(courseRows, riskRows) {
@@ -608,26 +718,18 @@
                 title: "复盘资源完成率",
                 detail: "结合视频、文档、题库和清单完成率，调整课前预习与课后巩固资源比例。"
             });
-            document.getElementById("recommendations").innerHTML = items.slice(0, 4).map(row => `
+            const html = items.slice(0, 4).map(row => `
                 <article class="rec">
                     <strong>${row.title}</strong>
                     <p>${row.detail}</p>
                 </article>
             `).join("");
+            document.getElementById("recommendations").innerHTML = html;
+            document.getElementById("overviewRecommendations").innerHTML = html;
         }
 
         function renderCharts(courseRows, tagRows) {
-            upsertChart("courseChart", {
-                tooltip: { trigger: "axis" },
-                legend: { top: 0 },
-                grid: { left: 42, right: 20, top: 44, bottom: 72 },
-                xAxis: { type: "category", data: courseRows.map(item => item.course_name), axisLabel: { rotate: 28, interval: 0 } },
-                yAxis: [{ type: "value", name: "分/百分比" }],
-                series: [
-                    { name: "平均成绩", type: "bar", data: courseRows.map(item => item.avg_score), itemStyle: { color: "#2364aa" } },
-                    { name: "通过率", type: "line", data: courseRows.map(item => item.pass_rate), itemStyle: { color: "#2f855a" } }
-                ]
-            });
+            renderCourseEffect(courseRows);
 
             upsertChart("scoreChart", {
                 tooltip: { trigger: "item" },

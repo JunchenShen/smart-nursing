@@ -122,6 +122,8 @@ python scripts/generate_sample_data.py --students 3000 --event-days 180
 - 搜索学员姓名、机构、课程和标签。
 - 点击“标签薄弱环节”图表中的标签，自动筛选该护理标签。
 - 个性化培训建议会随当前筛选条件更新。
+- 风险学员清单使用固定高度滚动表格，避免页面过长。
+- 当前视角只剩一门课程时，不展示单柱状图，改为课程洞察卡片。
 
 交互设计说明见：[docs/INTERACTION_DESIGN.md](docs/INTERACTION_DESIGN.md)。
 
