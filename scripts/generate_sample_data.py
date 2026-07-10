@@ -35,6 +35,24 @@ COURSES = [
 FORMATS = ["video", "document", "quiz", "checklist", "case"]
 ORGANIZATIONS = ["安心护理培训中心", "康养医院护理部", "颐和养老服务站", "社区卫生服务中心"]
 POSITIONS = ["护理员", "护士", "培训学员", "养老顾问"]
+SURNAMES = [
+    "赵", "钱", "孙", "李", "周", "吴", "郑", "王", "冯", "陈",
+    "褚", "卫", "蒋", "沈", "韩", "杨", "朱", "秦", "尤", "许",
+    "何", "吕", "施", "张", "孔", "曹", "严", "华", "金", "魏",
+    "陶", "姜", "戚", "谢", "邹", "喻", "柏", "水", "窦", "章",
+    "云", "苏", "潘", "葛", "奚", "范", "彭", "郎", "鲁", "韦",
+]
+GIVEN_FIRST = [
+    "子", "文", "思", "嘉", "明", "欣", "若", "雨", "泽", "昊",
+    "雅", "梓", "晨", "宇", "佳", "俊", "依", "启", "承", "诗",
+    "静", "安", "乐", "睿", "书", "涵", "一", "宏", "亦", "清",
+]
+GIVEN_SECOND = [
+    "涵", "轩", "怡", "宁", "琪", "然", "彤", "航", "妍", "杰",
+    "萱", "辰", "瑜", "诺", "霖", "阳", "琳", "哲", "悦", "凯",
+    "慧", "泽", "洋", "坤", "洁", "博", "璇", "铭", "雯", "远",
+]
+NAME_POOL_SIZE = len(SURNAMES) * len(GIVEN_FIRST) * len(GIVEN_SECOND)
 
 
 def _write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, object]]) -> None:
@@ -46,9 +64,13 @@ def _write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, object]])
 
 
 def _student_name(index: int) -> str:
-    surnames = "赵钱孙李周吴郑王冯陈刘杨黄何郭马罗梁宋唐许"
-    given = ["静", "伟", "芳", "敏", "磊", "娜", "强", "洋", "婷", "杰", "慧", "超", "雪", "鹏", "琳"]
-    return f"{surnames[index % len(surnames)]}{given[index % len(given)]}"
+    if index >= NAME_POOL_SIZE:
+        raise ValueError(f"student_count exceeds unique three-character name pool: {NAME_POOL_SIZE}")
+
+    second_index = index % len(GIVEN_SECOND)
+    first_index = (index // len(GIVEN_SECOND)) % len(GIVEN_FIRST)
+    surname_index = (index // (len(GIVEN_FIRST) * len(GIVEN_SECOND))) % len(SURNAMES)
+    return f"{SURNAMES[surname_index]}{GIVEN_FIRST[first_index]}{GIVEN_SECOND[second_index]}"
 
 
 def generate_all(
