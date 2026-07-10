@@ -10,13 +10,15 @@
 - 培训效果评估：统计平均成绩、通过率、成绩等级分布、课程效果排名。
 - 薄弱环节识别：按护理技能标签识别薄弱项，例如失智照护、压疮预防、跌倒预防等。
 - 个性化建议：根据低分课程与高风险学员生成培训优化建议。
-- 可视化展示：使用 ECharts 构建 PC 端数据看板。
+- 可视化展示：使用 ECharts 构建 PC 端交互式数据看板。
+- 交互分析：支持课程类别、护理标签、课程、风险阈值、关键词搜索等筛选，并支持图表点击联动。
 
 ## 技术栈
 
 - 后端：Python、Flask
 - 大数据处理：Spark、PySpark
 - 数据存储：CSV 文件，可扩展到 HDFS、Hive、MySQL
+- 数据库与大数据存储：MySQL 8.0、HDFS
 - 前端：HTML、CSS、JavaScript、ECharts
 - 部署：Docker、Linux/macOS
 
@@ -31,14 +33,19 @@
 ├── database/
 │   └── init.sql             # MySQL 建库建表脚本
 ├── docs/
-│   └── DATA_GENERATION.md   # 模拟数据客观规律说明
+│   ├── DATA_GENERATION.md   # 模拟数据客观规律说明
+│   ├── HDFS_MODE.md         # HDFS 模式说明
+│   └── INTERACTION_DESIGN.md # 页面交互设计说明
 ├── scripts/
-│   └── generate_sample_data.py
+│   ├── generate_sample_data.py
+│   ├── import_to_mysql.py
+│   └── upload_to_hdfs.sh
 ├── static/
 │   └── js/echarts.min.js
 ├── templates/
 │   └── index.html           # 可视化看板页面
 ├── Dockerfile
+├── docker-compose.hdfs.yml
 ├── docker-compose.yml
 ├── requirements.txt
 └── README.md
@@ -80,17 +87,36 @@ python scripts/generate_sample_data.py
 
 ### 扩大数据规模
 
-默认生成 120 名学员。可以通过参数扩大规模：
+默认生成 3000 名学员。该规模按 8GB 内存电脑设计，通常会产生约 6-7 万条学习行为日志和约 1.6 万条成绩记录。
+
+可以通过参数调整规模：
 
 ```bash
 python scripts/generate_sample_data.py --students 1000 --event-days 180
 ```
 
-如果要生成更大的演示数据，例如 5000 名学员：
+8GB 内存推荐演示规模：
 
 ```bash
-python scripts/generate_sample_data.py --students 5000 --event-days 180
+python scripts/generate_sample_data.py --students 3000 --event-days 180
 ```
+
+如果机器内存为 16GB 或以上，可以尝试 5000-10000 名学员。
+
+## 页面交互说明
+
+看板不是静态截图式报表，支持培训管理场景中的交互分析：
+
+- 按课程类别筛选，例如基础护理、临床技能、安全照护。
+- 按护理标签筛选，例如失智照护、跌倒预防、压疮预防。
+- 按具体课程筛选，定位某门课程的成绩和风险情况。
+- 按风险阈值筛选高风险学员。
+- 搜索学员姓名、机构、课程和标签。
+- 点击“课程培训效果”图表中的课程，自动筛选该课程。
+- 点击“标签薄弱环节”图表中的标签，自动筛选该护理标签。
+- 个性化培训建议会随当前筛选条件更新。
+
+交互设计说明见：[docs/INTERACTION_DESIGN.md](docs/INTERACTION_DESIGN.md)。
 
 ## 本地运行
 
@@ -169,6 +195,47 @@ docker compose down
 docker compose down -v
 ```
 
+## Docker Compose + HDFS 运行
+
+如果需要体现 HDFS 大数据存储技术栈，可以使用 HDFS 模式。该模式会启动：
+
+- `namenode`：HDFS NameNode。
+- `datanode`：HDFS DataNode。
+- `hdfs-uploader`：把 `data/*.csv` 上传到 HDFS。
+- `web`：Flask + Spark 分析服务，设置 `DATA_SOURCE=hdfs` 后从 HDFS 读取数据。
+
+按 8GB 内存推荐先生成 3000 名学员数据：
+
+```bash
+python scripts/generate_sample_data.py --students 3000 --event-days 180
+```
+
+启动：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.hdfs.yml up --build
+```
+
+访问系统：
+
+```text
+http://127.0.0.1:5001
+```
+
+访问 HDFS NameNode 页面：
+
+```text
+http://127.0.0.1:9870
+```
+
+查看 HDFS 文件：
+
+```bash
+docker exec smart-care-namenode hdfs dfs -ls /smart-care-training
+```
+
+详细说明见：[docs/HDFS_MODE.md](docs/HDFS_MODE.md)。
+
 ## API 接口
 
 健康检查：
@@ -202,7 +269,9 @@ GET /api/chart
 
 - 建表脚本：`database/init.sql`
 - 导入脚本：`scripts/import_to_mysql.py`
-- 编排文件：`docker-compose.yml`
+- HDFS 上传脚本：`scripts/upload_to_hdfs.sh`
+- MySQL 编排文件：`docker-compose.yml`
+- HDFS 编排文件：`docker-compose.hdfs.yml`
 
 ## 可扩展方向
 

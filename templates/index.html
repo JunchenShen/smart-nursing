@@ -18,9 +18,7 @@
             --gold: #b7791f;
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -72,6 +70,49 @@
             padding: 22px 28px 34px;
         }
 
+        .toolbar {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(150px, 1fr)) auto;
+            gap: 12px;
+            align-items: end;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+
+        .field label {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        select,
+        input {
+            width: 100%;
+            height: 36px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #ffffff;
+            color: var(--ink);
+            padding: 0 10px;
+            font-size: 13px;
+        }
+
+        button {
+            height: 36px;
+            border: 1px solid var(--blue);
+            border-radius: 6px;
+            background: var(--blue);
+            color: #ffffff;
+            padding: 0 14px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
         .metrics {
             display: grid;
             grid-template-columns: repeat(7, minmax(120px, 1fr));
@@ -116,10 +157,23 @@
             min-width: 0;
         }
 
+        .panel-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
         .panel h2 {
-            margin: 0 0 12px;
+            margin: 0;
             font-size: 16px;
             line-height: 22px;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 12px;
         }
 
         .chart {
@@ -127,9 +181,7 @@
             height: 318px;
         }
 
-        .wide {
-            grid-column: 1 / -1;
-        }
+        .wide { grid-column: 1 / -1; }
 
         table {
             width: 100%;
@@ -149,6 +201,8 @@
             font-weight: 600;
             background: #f8fafc;
         }
+
+        tbody tr:hover { background: #f8fafc; }
 
         .risk-high {
             color: var(--red);
@@ -183,15 +237,29 @@
             line-height: 18px;
         }
 
+        .empty,
         .error {
             padding: 18px;
-            border: 1px solid #fed7aa;
-            background: #fff7ed;
-            color: #9a3412;
             border-radius: 8px;
         }
 
+        .empty {
+            border: 1px solid #dbeafe;
+            background: #eff6ff;
+            color: #1e40af;
+        }
+
+        .error {
+            border: 1px solid #fed7aa;
+            background: #fff7ed;
+            color: #9a3412;
+        }
+
         @media (max-width: 1180px) {
+            .toolbar {
+                grid-template-columns: repeat(3, minmax(150px, 1fr));
+            }
+
             .metrics {
                 grid-template-columns: repeat(4, minmax(130px, 1fr));
             }
@@ -206,27 +274,21 @@
         }
 
         @media (max-width: 720px) {
-            header {
-                padding: 16px;
-            }
-
-            main {
-                padding: 16px;
-            }
+            header { padding: 16px; }
+            main { padding: 16px; }
 
             .title-row {
                 align-items: flex-start;
                 flex-direction: column;
             }
 
+            .toolbar,
             .metrics,
             .recommendations {
                 grid-template-columns: 1fr;
             }
 
-            .chart {
-                height: 280px;
-            }
+            .chart { height: 280px; }
         }
     </style>
 </head>
@@ -242,73 +304,171 @@
     </header>
 
     <main>
+        <section class="toolbar">
+            <div class="field">
+                <label for="categoryFilter">课程类别</label>
+                <select id="categoryFilter"></select>
+            </div>
+            <div class="field">
+                <label for="tagFilter">护理标签</label>
+                <select id="tagFilter"></select>
+            </div>
+            <div class="field">
+                <label for="courseFilter">课程</label>
+                <select id="courseFilter"></select>
+            </div>
+            <div class="field">
+                <label for="riskFilter">风险阈值</label>
+                <select id="riskFilter">
+                    <option value="0">全部风险</option>
+                    <option value="30">风险值 >= 30</option>
+                    <option value="38" selected>风险值 >= 38</option>
+                    <option value="45">风险值 >= 45</option>
+                    <option value="55">风险值 >= 55</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="keywordFilter">学员/机构/课程搜索</label>
+                <input id="keywordFilter" type="search" placeholder="输入关键字">
+            </div>
+            <button id="resetBtn" type="button">重置筛选</button>
+        </section>
+
         <section class="metrics" id="metrics"></section>
 
         <section class="grid">
             <div class="panel">
-                <h2>课程培训效果</h2>
+                <div class="panel-head">
+                    <h2>课程培训效果</h2>
+                    <span class="hint">点击柱状图筛选课程</span>
+                </div>
                 <div class="chart" id="courseChart"></div>
             </div>
             <div class="panel">
-                <h2>成绩等级分布</h2>
+                <div class="panel-head">
+                    <h2>成绩等级分布</h2>
+                    <span class="hint">当前总体分布</span>
+                </div>
                 <div class="chart" id="scoreChart"></div>
             </div>
             <div class="panel">
-                <h2>标签薄弱环节</h2>
+                <div class="panel-head">
+                    <h2>标签薄弱环节</h2>
+                    <span class="hint">点击标签联动筛选</span>
+                </div>
                 <div class="chart" id="tagChart"></div>
             </div>
             <div class="panel">
-                <h2>资源格式使用表现</h2>
+                <div class="panel-head">
+                    <h2>资源格式使用表现</h2>
+                    <span class="hint">对比资源完成率</span>
+                </div>
                 <div class="chart" id="formatChart"></div>
             </div>
             <div class="panel wide">
-                <h2>周学习活跃趋势</h2>
+                <div class="panel-head">
+                    <h2>周学习活跃趋势</h2>
+                    <span class="hint">观察培训周期内学习热度</span>
+                </div>
                 <div class="chart" id="weekChart"></div>
             </div>
             <div class="panel wide">
-                <h2>高风险学员跟踪清单</h2>
+                <div class="panel-head">
+                    <h2>高风险学员跟踪清单</h2>
+                    <span class="hint" id="riskSummary"></span>
+                </div>
                 <div id="riskTable"></div>
             </div>
             <div class="panel wide">
-                <h2>个性化培训优化建议</h2>
+                <div class="panel-head">
+                    <h2>个性化培训优化建议</h2>
+                    <span class="hint">基于当前薄弱课程和风险清单</span>
+                </div>
                 <div class="recommendations" id="recommendations"></div>
             </div>
         </section>
     </main>
 
     <script>
-        const charts = [];
+        const charts = {};
+        const state = {
+            raw: null,
+            category: "全部",
+            tag: "全部",
+            course: "全部",
+            risk: 38,
+            keyword: ""
+        };
+
         const number = value => Number(value || 0).toLocaleString("zh-CN");
         const percent = value => `${Number(value || 0).toFixed(1)}%`;
+        const average = rows => rows.length ? rows.reduce((sum, value) => sum + Number(value || 0), 0) / rows.length : 0;
 
-        function initChart(id, option) {
-            const chart = echarts.init(document.getElementById(id));
-            chart.setOption(option);
-            charts.push(chart);
+        function setSelectOptions(id, values, selected = "全部") {
+            const select = document.getElementById(id);
+            select.innerHTML = ["全部", ...values].map(value => `<option value="${value}">${value}</option>`).join("");
+            select.value = selected;
         }
 
-        function renderMetrics(overview) {
+        function upsertChart(id, option) {
+            if (!charts[id]) charts[id] = echarts.init(document.getElementById(id));
+            charts[id].setOption(option, true);
+            return charts[id];
+        }
+
+        function filteredCourses() {
+            return state.raw.course_effect.filter(item => {
+                return (state.category === "全部" || item.category === state.category)
+                    && (state.tag === "全部" || item.tag === state.tag)
+                    && (state.course === "全部" || item.course_name === state.course);
+            });
+        }
+
+        function filteredTags(courseRows) {
+            const allowedTags = new Set(courseRows.map(item => item.tag));
+            return state.raw.tag_weakness.filter(item => state.tag === "全部" ? allowedTags.has(item.tag) : item.tag === state.tag);
+        }
+
+        function filteredRisks() {
+            const keyword = state.keyword.trim().toLowerCase();
+            return state.raw.learner_risk.filter(row => {
+                const matchesTag = state.tag === "全部" || row.tag === state.tag;
+                const matchesCourse = state.course === "全部" || row.course_name === state.course;
+                const matchesRisk = Number(row.risk_score) >= state.risk;
+                const text = `${row.student_name} ${row.organization} ${row.course_name} ${row.tag}`.toLowerCase();
+                const matchesKeyword = !keyword || text.includes(keyword);
+                return matchesTag && matchesCourse && matchesRisk && matchesKeyword;
+            });
+        }
+
+        function renderMetrics(courseRows, riskRows) {
+            const overview = state.raw.overview;
             const metrics = [
-                ["学员数", overview.student_count, "人"],
-                ["课程数", overview.course_count, "门"],
-                ["平均成绩", overview.avg_score, "分"],
-                ["平均进度", percent(overview.avg_progress), ""],
+                ["总学员", overview.student_count, "人"],
+                ["筛选课程", courseRows.length, "门"],
+                ["平均成绩", average(courseRows.map(item => item.avg_score)).toFixed(2), "分"],
+                ["平均进度", percent(average(courseRows.map(item => item.avg_progress))), ""],
                 ["累计学习", overview.total_study_hours, "小时"],
-                ["通过率", percent(overview.pass_rate), ""],
-                ["风险记录", overview.risk_records, "条"],
+                ["平均通过率", percent(average(courseRows.map(item => item.pass_rate))), ""],
+                ["风险学员", riskRows.length, "人"],
             ];
             document.getElementById("metrics").innerHTML = metrics.map(item => {
-                const value = typeof item[1] === "string" ? item[1] : number(item[1]);
+                const value = typeof item[1] === "string" && item[1].includes("%") ? item[1] : number(item[1]);
                 return `
-                <div class="metric">
-                    <span>${item[0]}</span>
-                    <strong>${value}${item[2] ? `<small> ${item[2]}</small>` : ""}</strong>
-                </div>
-            `;
+                    <div class="metric">
+                        <span>${item[0]}</span>
+                        <strong>${value}${item[2] ? `<small> ${item[2]}</small>` : ""}</strong>
+                    </div>
+                `;
             }).join("");
         }
 
         function renderRiskTable(rows) {
+            document.getElementById("riskSummary").innerText = `当前显示 ${rows.length} 条`;
+            if (!rows.length) {
+                document.getElementById("riskTable").innerHTML = `<div class="empty">当前筛选条件下没有高风险学员。</div>`;
+                return;
+            }
             document.getElementById("riskTable").innerHTML = `
                 <table>
                     <thead>
@@ -330,10 +490,10 @@
                                 <td>${row.organization}</td>
                                 <td>${row.course_name}</td>
                                 <td>${row.tag}</td>
-                                <td>${row.final_score}</td>
+                                <td>${Number(row.final_score).toFixed(2)}</td>
                                 <td>${percent(row.avg_progress)}</td>
-                                <td>${row.study_minutes}</td>
-                                <td class="risk-high">${row.risk_score}</td>
+                                <td>${number(row.study_minutes)}</td>
+                                <td class="risk-high">${Number(row.risk_score).toFixed(2)}</td>
                             </tr>
                         `).join("")}
                     </tbody>
@@ -341,8 +501,23 @@
             `;
         }
 
-        function renderRecommendations(rows) {
-            document.getElementById("recommendations").innerHTML = rows.map(row => `
+        function renderRecommendations(courseRows, riskRows) {
+            const weakCourses = [...courseRows].sort((a, b) => a.avg_score - b.avg_score).slice(0, 3);
+            const items = weakCourses.map(row => ({
+                title: `加强「${row.course_name}」专项训练`,
+                detail: `当前筛选下该课程成绩偏低，建议增加${row.tag}案例、短测验和课后复盘。`
+            }));
+            if (riskRows.length) {
+                items.push({
+                    title: "优先安排高风险学员补训",
+                    detail: `当前筛选命中 ${riskRows.length} 名高风险学员，建议按机构和课程分组跟进。`
+                });
+            }
+            items.push({
+                title: "优化资源格式组合",
+                detail: "结合视频、文档、题库和实操清单完成率，调整课前预习与课后巩固资源比例。"
+            });
+            document.getElementById("recommendations").innerHTML = items.slice(0, 5).map(row => `
                 <article class="rec">
                     <strong>${row.title}</strong>
                     <p>${row.detail}</p>
@@ -350,68 +525,134 @@
             `).join("");
         }
 
-        function renderDashboard(data) {
-            renderMetrics(data.overview);
-            renderRiskTable(data.learner_risk);
-            renderRecommendations(data.recommendations);
-
-            initChart("courseChart", {
+        function renderCharts(courseRows, tagRows) {
+            const courseChart = upsertChart("courseChart", {
                 tooltip: { trigger: "axis" },
                 legend: { top: 0 },
                 grid: { left: 42, right: 20, top: 44, bottom: 72 },
-                xAxis: {
-                    type: "category",
-                    data: data.course_effect.map(item => item.course_name),
-                    axisLabel: { rotate: 28, interval: 0 }
-                },
+                xAxis: { type: "category", data: courseRows.map(item => item.course_name), axisLabel: { rotate: 28, interval: 0 } },
                 yAxis: [{ type: "value", name: "分/百分比" }],
                 series: [
-                    { name: "平均成绩", type: "bar", data: data.course_effect.map(item => item.avg_score), itemStyle: { color: "#2364aa" } },
-                    { name: "通过率", type: "line", data: data.course_effect.map(item => item.pass_rate), itemStyle: { color: "#2f855a" } }
+                    { name: "平均成绩", type: "bar", data: courseRows.map(item => item.avg_score), itemStyle: { color: "#2364aa" } },
+                    { name: "通过率", type: "line", data: courseRows.map(item => item.pass_rate), itemStyle: { color: "#2f855a" } }
                 ]
             });
 
-            initChart("scoreChart", {
+            courseChart.off("click");
+            courseChart.on("click", params => {
+                state.course = params.name;
+                document.getElementById("courseFilter").value = state.course;
+                renderAll();
+            });
+
+            upsertChart("scoreChart", {
                 tooltip: { trigger: "item" },
                 series: [{
                     type: "pie",
                     radius: ["45%", "72%"],
-                    data: data.score_distribution.map(item => ({ name: item.score_level, value: item.count })),
+                    data: state.raw.score_distribution.map(item => ({ name: item.score_level, value: item.count })),
                     color: ["#2f855a", "#2364aa", "#b7791f", "#c2410c"]
                 }]
             });
 
-            initChart("tagChart", {
+            const tagChart = upsertChart("tagChart", {
                 tooltip: { trigger: "axis" },
                 grid: { left: 42, right: 20, top: 24, bottom: 76 },
-                xAxis: { type: "category", data: data.tag_weakness.map(item => item.tag), axisLabel: { rotate: 28, interval: 0 } },
+                xAxis: { type: "category", data: tagRows.map(item => item.tag), axisLabel: { rotate: 28, interval: 0 } },
                 yAxis: { type: "value", name: "薄弱率" },
-                series: [{ type: "bar", data: data.tag_weakness.map(item => item.weak_rate), itemStyle: { color: "#c2410c" } }]
+                series: [{ type: "bar", data: tagRows.map(item => item.weak_rate), itemStyle: { color: "#c2410c" } }]
             });
 
-            initChart("formatChart", {
+            tagChart.off("click");
+            tagChart.on("click", params => {
+                state.tag = params.name;
+                document.getElementById("tagFilter").value = state.tag;
+                renderAll();
+            });
+
+            upsertChart("formatChart", {
                 tooltip: { trigger: "axis" },
                 legend: { top: 0 },
                 grid: { left: 42, right: 20, top: 44, bottom: 40 },
-                xAxis: { type: "category", data: data.format_usage.map(item => item.format) },
+                xAxis: { type: "category", data: state.raw.format_usage.map(item => item.format) },
                 yAxis: { type: "value" },
                 series: [
-                    { name: "访问次数", type: "bar", data: data.format_usage.map(item => item.views), itemStyle: { color: "#2364aa" } },
-                    { name: "完成率", type: "line", data: data.format_usage.map(item => item.completion_rate), itemStyle: { color: "#b7791f" } }
+                    { name: "访问次数", type: "bar", data: state.raw.format_usage.map(item => item.views), itemStyle: { color: "#2364aa" } },
+                    { name: "完成率", type: "line", data: state.raw.format_usage.map(item => item.completion_rate), itemStyle: { color: "#b7791f" } }
                 ]
             });
 
-            initChart("weekChart", {
+            upsertChart("weekChart", {
                 tooltip: { trigger: "axis" },
                 legend: { top: 0 },
                 grid: { left: 44, right: 22, top: 44, bottom: 36 },
-                xAxis: { type: "category", data: data.weekly_activity.map(item => item.week) },
+                xAxis: { type: "category", data: state.raw.weekly_activity.map(item => item.week) },
                 yAxis: [{ type: "value" }],
                 series: [
-                    { name: "学习小时", type: "line", smooth: true, areaStyle: {}, data: data.weekly_activity.map(item => item.study_hours), itemStyle: { color: "#2364aa" } },
-                    { name: "活跃学员", type: "bar", data: data.weekly_activity.map(item => item.active_students), itemStyle: { color: "#2f855a" } }
+                    { name: "学习小时", type: "line", smooth: true, areaStyle: {}, data: state.raw.weekly_activity.map(item => item.study_hours), itemStyle: { color: "#2364aa" } },
+                    { name: "活跃学员", type: "bar", data: state.raw.weekly_activity.map(item => item.active_students), itemStyle: { color: "#2f855a" } }
                 ]
             });
+        }
+
+        function renderAll() {
+            const courseRows = filteredCourses();
+            const tagRows = filteredTags(courseRows);
+            const riskRows = filteredRisks();
+            renderMetrics(courseRows, riskRows);
+            renderCharts(courseRows, tagRows);
+            renderRiskTable(riskRows);
+            renderRecommendations(courseRows, riskRows);
+        }
+
+        function bindControls() {
+            document.getElementById("categoryFilter").addEventListener("change", event => {
+                state.category = event.target.value;
+                state.course = "全部";
+                document.getElementById("courseFilter").value = "全部";
+                renderAll();
+            });
+            document.getElementById("tagFilter").addEventListener("change", event => {
+                state.tag = event.target.value;
+                renderAll();
+            });
+            document.getElementById("courseFilter").addEventListener("change", event => {
+                state.course = event.target.value;
+                renderAll();
+            });
+            document.getElementById("riskFilter").addEventListener("change", event => {
+                state.risk = Number(event.target.value);
+                renderAll();
+            });
+            document.getElementById("keywordFilter").addEventListener("input", event => {
+                state.keyword = event.target.value;
+                renderAll();
+            });
+            document.getElementById("resetBtn").addEventListener("click", () => {
+                state.category = "全部";
+                state.tag = "全部";
+                state.course = "全部";
+                state.risk = 38;
+                state.keyword = "";
+                document.getElementById("categoryFilter").value = "全部";
+                document.getElementById("tagFilter").value = "全部";
+                document.getElementById("courseFilter").value = "全部";
+                document.getElementById("riskFilter").value = "38";
+                document.getElementById("keywordFilter").value = "";
+                renderAll();
+            });
+        }
+
+        function bootstrap(data) {
+            state.raw = data;
+            const categories = [...new Set(data.course_effect.map(item => item.category))];
+            const tags = [...new Set(data.course_effect.map(item => item.tag))];
+            const courses = [...new Set(data.course_effect.map(item => item.course_name))];
+            setSelectOptions("categoryFilter", categories);
+            setSelectOptions("tagFilter", tags);
+            setSelectOptions("courseFilter", courses);
+            bindControls();
+            renderAll();
         }
 
         fetch("/api/dashboard")
@@ -420,15 +661,15 @@
                 return response.json();
             })
             .then(data => {
-                document.getElementById("status").innerText = "数据已加载，来源：data/*.csv";
-                renderDashboard(data);
+                document.getElementById("status").innerText = "数据已加载，可筛选分析";
+                bootstrap(data);
             })
             .catch(error => {
                 document.querySelector("main").innerHTML = `<div class="error">加载失败：${error.message}</div>`;
                 document.getElementById("status").innerText = "加载失败";
             });
 
-        window.addEventListener("resize", () => charts.forEach(chart => chart.resize()));
+        window.addEventListener("resize", () => Object.values(charts).forEach(chart => chart.resize()));
     </script>
 </body>
 </html>

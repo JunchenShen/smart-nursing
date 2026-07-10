@@ -47,8 +47,9 @@ def _ensure_sample_data() -> None:
 def get_spark() -> SparkSession:
     return (
         SparkSession.builder.appName("SmartCareTrainingAnalytics")
-        .master("local[*]")
-        .config("spark.sql.shuffle.partitions", "8")
+        .master(os.getenv("SPARK_MASTER", "local[*]"))
+        .config("spark.driver.memory", os.getenv("SPARK_DRIVER_MEMORY", "1g"))
+        .config("spark.sql.shuffle.partitions", os.getenv("SPARK_SHUFFLE_PARTITIONS", "8"))
         .config("spark.ui.showConsoleProgress", "false")
         .getOrCreate()
     )
@@ -56,6 +57,14 @@ def get_spark() -> SparkSession:
 
 def _read_csv(spark: SparkSession, name: str) -> DataFrame:
     return spark.read.option("header", True).option("inferSchema", True).csv(str(DATA_DIR / name))
+
+
+def _hdfs_base_path() -> str:
+    return os.getenv("HDFS_BASE_PATH", "hdfs://namenode:8020/smart-care-training")
+
+
+def _read_hdfs_csv(spark: SparkSession, name: str) -> DataFrame:
+    return spark.read.option("header", True).option("inferSchema", True).csv(f"{_hdfs_base_path()}/{name}")
 
 
 def _mysql_config() -> dict[str, Any]:
@@ -98,8 +107,17 @@ def _read_mysql_table(spark: SparkSession, query: str) -> DataFrame:
 def load_tables() -> dict[str, DataFrame]:
     _ensure_sample_data()
     spark = get_spark()
-    if os.getenv("DATA_SOURCE", "csv").lower() == "mysql":
+    data_source = os.getenv("DATA_SOURCE", "csv").lower()
+    if data_source == "mysql":
         return {name: _read_mysql_table(spark, query) for name, query in TABLE_SQL.items()}
+    if data_source == "hdfs":
+        return {
+            "students": _read_hdfs_csv(spark, "students.csv"),
+            "courses": _read_hdfs_csv(spark, "courses.csv"),
+            "resources": _read_hdfs_csv(spark, "resources.csv"),
+            "events": _read_hdfs_csv(spark, "learning_events.csv"),
+            "scores": _read_hdfs_csv(spark, "assessment_scores.csv"),
+        }
 
     tables = {
         "students": _read_csv(spark, "students.csv"),
@@ -275,7 +293,7 @@ def build_dashboard() -> dict[str, Any]:
         "format_usage": _collect(format_usage),
         "weekly_activity": _collect(weekly_activity),
         "score_distribution": _collect(score_distribution),
-        "learner_risk": _collect(learner_risk, 10),
+        "learner_risk": _collect(learner_risk, int(os.getenv("RISK_TABLE_LIMIT", "120"))),
         "recommendations": recommendations[:5],
     }
 

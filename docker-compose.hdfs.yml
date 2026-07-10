@@ -1,0 +1,67 @@
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: smart-care-namenode
+    environment:
+      CLUSTER_NAME: smart-care-cluster
+      CORE_CONF_fs_defaultFS: hdfs://namenode:8020
+      HDFS_CONF_dfs_replication: 1
+      HDFS_CONF_dfs_permissions_enabled: "false"
+    ports:
+      - "9870:9870"
+      - "8020:8020"
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+    healthcheck:
+      test: ["CMD", "hdfs", "dfsadmin", "-fs", "hdfs://namenode:8020", "-report"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: smart-care-datanode
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:8020
+      HDFS_CONF_dfs_replication: 1
+      HDFS_CONF_dfs_permissions_enabled: "false"
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    depends_on:
+      namenode:
+        condition: service_healthy
+
+  hdfs-uploader:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: smart-care-hdfs-uploader
+    command: bash /scripts/upload_to_hdfs.sh
+    environment:
+      HDFS_URI: hdfs://namenode:8020
+      HDFS_TARGET_DIR: /smart-care-training
+      LOCAL_DATA_DIR: /data
+      CORE_CONF_fs_defaultFS: hdfs://namenode:8020
+      HDFS_CONF_dfs_replication: 1
+      HDFS_CONF_dfs_permissions_enabled: "false"
+    volumes:
+      - ./data:/data:ro
+      - ./scripts:/scripts:ro
+    depends_on:
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_started
+
+  web:
+    environment:
+      DATA_SOURCE: hdfs
+      HDFS_BASE_PATH: hdfs://namenode:8020/smart-care-training
+      SPARK_MASTER: local[2]
+      SPARK_DRIVER_MEMORY: 1g
+      SPARK_SHUFFLE_PARTITIONS: 6
+    depends_on:
+      hdfs-uploader:
+        condition: service_completed_successfully
+
+volumes:
+  hadoop_namenode:
+  hadoop_datanode:
