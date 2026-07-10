@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import os
 from pathlib import Path
 import sys
+from datetime import date
+from decimal import Decimal
 from typing import Any
 
+import pymysql
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
@@ -21,6 +25,13 @@ REQUIRED_FILES = [
     "learning_events.csv",
     "assessment_scores.csv",
 ]
+TABLE_SQL = {
+    "students": "SELECT student_id, student_name, age, organization, position, platform, enroll_date FROM students",
+    "courses": "SELECT course_id, course_name, category, tag, difficulty, hours FROM courses",
+    "resources": "SELECT resource_id, course_id, resource_title, format, duration_minutes, terminal FROM resources",
+    "events": "SELECT event_id, student_id, course_id, resource_id, event_date, duration_minutes, progress_percent, completed, device FROM learning_events",
+    "scores": "SELECT student_id, course_id, midterm_score, final_score, practical_score, attendance_rate FROM assessment_scores",
+}
 
 
 def _ensure_sample_data() -> None:
@@ -47,10 +58,49 @@ def _read_csv(spark: SparkSession, name: str) -> DataFrame:
     return spark.read.option("header", True).option("inferSchema", True).csv(str(DATA_DIR / name))
 
 
+def _mysql_config() -> dict[str, Any]:
+    return {
+        "host": os.getenv("DB_HOST", "127.0.0.1"),
+        "port": int(os.getenv("DB_PORT", "3306")),
+        "user": os.getenv("DB_USER", "training_user"),
+        "password": os.getenv("DB_PASSWORD", "training_pass"),
+        "database": os.getenv("DB_NAME", "smart_care_training"),
+        "charset": "utf8mb4",
+        "cursorclass": pymysql.cursors.DictCursor,
+    }
+
+
+def _normalize_mysql_value(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, date):
+        return value.isoformat()
+    return value
+
+
+def _normalize_mysql_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {key: _normalize_mysql_value(value) for key, value in row.items()}
+
+
+def _read_mysql_table(spark: SparkSession, query: str) -> DataFrame:
+    connection = pymysql.connect(**_mysql_config())
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = [_normalize_mysql_row(row) for row in cursor.fetchall()]
+    finally:
+        connection.close()
+
+    return spark.createDataFrame(rows)
+
+
 @lru_cache(maxsize=1)
 def load_tables() -> dict[str, DataFrame]:
     _ensure_sample_data()
     spark = get_spark()
+    if os.getenv("DATA_SOURCE", "csv").lower() == "mysql":
+        return {name: _read_mysql_table(spark, query) for name, query in TABLE_SQL.items()}
+
     tables = {
         "students": _read_csv(spark, "students.csv"),
         "courses": _read_csv(spark, "courses.csv"),

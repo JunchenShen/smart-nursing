@@ -28,6 +28,10 @@
 │   ├── main.py              # Flask 入口与 API
 │   └── spark_job.py         # Spark 数据读取与分析逻辑
 ├── data/                    # 生成或导入的训练数据
+├── database/
+│   └── init.sql             # MySQL 建库建表脚本
+├── docs/
+│   └── DATA_GENERATION.md   # 模拟数据客观规律说明
 ├── scripts/
 │   └── generate_sample_data.py
 ├── static/
@@ -35,6 +39,7 @@
 ├── templates/
 │   └── index.html           # 可视化看板页面
 ├── Dockerfile
+├── docker-compose.yml
 ├── requirements.txt
 └── README.md
 ```
@@ -60,6 +65,32 @@ python scripts/generate_sample_data.py
 ```
 
 系统启动时如果发现 `data/` 缺少 CSV，也会自动生成一份示例数据。
+
+### 模拟数据的客观规律
+
+数据生成脚本遵循以下可解释规则：
+
+- 学员基础能力近似服从正态分布，大多数学员集中在中等水平。
+- 初级、中级、高级课程设置不同难度惩罚，课程越难平均成绩越低。
+- 学习时长、资源完成数量、学习进度会正向影响考试成绩。
+- 移动端学习占比较高，用于模拟护理培训中的碎片化学习场景。
+- 资源访问不是 100%，用于模拟漏学、跳学和重点学习行为。
+
+详细说明见：[docs/DATA_GENERATION.md](docs/DATA_GENERATION.md)。
+
+### 扩大数据规模
+
+默认生成 120 名学员。可以通过参数扩大规模：
+
+```bash
+python scripts/generate_sample_data.py --students 1000 --event-days 180
+```
+
+如果要生成更大的演示数据，例如 5000 名学员：
+
+```bash
+python scripts/generate_sample_data.py --students 5000 --event-days 180
+```
 
 ## 本地运行
 
@@ -96,6 +127,48 @@ docker run --rm -p 5000:5000 smart-care-training
 http://127.0.0.1:5000
 ```
 
+## Docker Compose + MySQL 运行
+
+如果需要体现数据库技术栈，推荐使用 Compose 模式。该模式会启动：
+
+- `mysql`：MySQL 8.0 明细数据库。
+- `importer`：把 `data/*.csv` 导入 MySQL。
+- `web`：Flask + Spark 分析服务，设置 `DATA_SOURCE=mysql` 后从 MySQL 读取数据。
+
+启动：
+
+```bash
+docker compose up --build
+```
+
+访问：
+
+```text
+http://127.0.0.1:5001
+```
+
+MySQL 本机连接信息：
+
+```text
+host: 127.0.0.1
+port: 3307
+database: smart_care_training
+user: training_user
+password: training_pass
+```
+
+停止：
+
+```bash
+docker compose down
+```
+
+如果要连同 MySQL 数据卷一起清理：
+
+```bash
+docker compose down -v
+```
+
 ## API 接口
 
 健康检查：
@@ -124,6 +197,12 @@ GET /api/chart
 - 从移动端、PC 端埋点日志导入学习行为数据。
 - 将 CSV 替换为 HDFS 或 Hive 表，在 `app/spark_job.py` 中改用 `spark.read.table()` 或 HDFS 路径读取。
 - 将 Spark 分析结果定时写入 MySQL/Redis，前端接口直接读取缓存结果。
+
+当前项目已经提供 MySQL 建表和导入脚本：
+
+- 建表脚本：`database/init.sql`
+- 导入脚本：`scripts/import_to_mysql.py`
+- 编排文件：`docker-compose.yml`
 
 ## 可扩展方向
 

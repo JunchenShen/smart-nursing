@@ -2,11 +2,23 @@ from __future__ import annotations
 
 import csv
 import random
+import argparse
 from datetime import date, timedelta
 from pathlib import Path
 
 
 SEED = 20260709
+DEFAULT_STUDENT_COUNT = 120
+DEFAULT_EVENT_DAYS = 84
+BASE_ABILITY_MEAN = 74
+BASE_ABILITY_STDDEV = 10
+RESOURCE_ACCESS_PROBABILITY = 0.84
+PROGRESS_MEAN = 76
+PROGRESS_STDDEV = 22
+MOBILE_PLATFORM_WEIGHT = 0.64
+MOBILE_EVENT_WEIGHT = 0.67
+COURSE_COUNT_RANGE = (4, 7)
+DIFFICULTY_PENALTY = {"初级": 0, "中级": 5, "高级": 9}
 
 
 COURSES = [
@@ -39,8 +51,13 @@ def _student_name(index: int) -> str:
     return f"{surnames[index % len(surnames)]}{given[index % len(given)]}"
 
 
-def generate_all(data_dir: str | Path = "data", student_count: int = 120) -> None:
-    random.seed(SEED)
+def generate_all(
+    data_dir: str | Path = "data",
+    student_count: int = DEFAULT_STUDENT_COUNT,
+    event_days: int = DEFAULT_EVENT_DAYS,
+    seed: int = SEED,
+) -> None:
+    random.seed(seed)
     data_dir = Path(data_dir)
 
     courses = [
@@ -64,7 +81,7 @@ def generate_all(data_dir: str | Path = "data", student_count: int = 120) -> Non
                 "age": random.randint(22, 54),
                 "organization": random.choice(ORGANIZATIONS),
                 "position": random.choice(POSITIONS),
-                "platform": random.choices(["mobile", "pc"], weights=[0.64, 0.36], k=1)[0],
+                "platform": random.choices(["mobile", "pc"], weights=[MOBILE_PLATFORM_WEIGHT, 1 - MOBILE_PLATFORM_WEIGHT], k=1)[0],
                 "enroll_date": (date(2026, 3, 1) + timedelta(days=random.randint(0, 55))).isoformat(),
             }
         )
@@ -90,16 +107,16 @@ def generate_all(data_dir: str | Path = "data", student_count: int = 120) -> Non
     scores = []
     start_day = date(2026, 4, 1)
     for student in students:
-        base_ability = random.normalvariate(74, 10)
-        chosen_courses = random.sample(courses, random.randint(4, 7))
+        base_ability = random.normalvariate(BASE_ABILITY_MEAN, BASE_ABILITY_STDDEV)
+        chosen_courses = random.sample(courses, random.randint(*COURSE_COUNT_RANGE))
         for course in chosen_courses:
             course_resources = [res for res in resources if res["course_id"] == course["course_id"]]
             study_minutes = 0
             progress_values = []
             completed_count = 0
             for res in course_resources:
-                if random.random() < 0.84:
-                    progress = max(8, min(100, int(random.normalvariate(76, 22))))
+                if random.random() < RESOURCE_ACCESS_PROBABILITY:
+                    progress = max(8, min(100, int(random.normalvariate(PROGRESS_MEAN, PROGRESS_STDDEV))))
                     completed = 1 if progress >= random.randint(70, 92) else 0
                     actual_minutes = max(2, int(res["duration_minutes"] * progress / 100 + random.randint(-2, 7)))
                     study_minutes += actual_minutes
@@ -111,16 +128,16 @@ def generate_all(data_dir: str | Path = "data", student_count: int = 120) -> Non
                             "student_id": student["student_id"],
                             "course_id": course["course_id"],
                             "resource_id": res["resource_id"],
-                            "event_date": (start_day + timedelta(days=random.randint(0, 84))).isoformat(),
+                            "event_date": (start_day + timedelta(days=random.randint(0, event_days - 1))).isoformat(),
                             "duration_minutes": actual_minutes,
                             "progress_percent": progress,
                             "completed": completed,
-                            "device": random.choices(["mobile", "pc"], weights=[0.67, 0.33], k=1)[0],
+                            "device": random.choices(["mobile", "pc"], weights=[MOBILE_EVENT_WEIGHT, 1 - MOBILE_EVENT_WEIGHT], k=1)[0],
                         }
                     )
 
             avg_progress = sum(progress_values) / len(progress_values) if progress_values else 0
-            difficulty_penalty = {"初级": 0, "中级": 5, "高级": 9}[course["difficulty"]]
+            difficulty_penalty = DIFFICULTY_PENALTY[course["difficulty"]]
             engagement_bonus = min(12, study_minutes / max(1, int(course["hours"])) / 6) + completed_count * 1.2
             midterm = max(35, min(100, base_ability - difficulty_penalty + engagement_bonus + random.normalvariate(0, 8)))
             final_score = max(30, min(100, midterm * 0.42 + avg_progress * 0.28 + base_ability * 0.3 + random.normalvariate(0, 6)))
@@ -144,5 +161,12 @@ def generate_all(data_dir: str | Path = "data", student_count: int = 120) -> Non
 
 
 if __name__ == "__main__":
-    generate_all()
-    print("Sample training data generated in ./data")
+    parser = argparse.ArgumentParser(description="Generate explainable smart-care training sample data.")
+    parser.add_argument("--data-dir", default="data", help="Output directory for CSV files.")
+    parser.add_argument("--students", type=int, default=DEFAULT_STUDENT_COUNT, help="Number of students to generate.")
+    parser.add_argument("--event-days", type=int, default=DEFAULT_EVENT_DAYS, help="Learning event date range in days.")
+    parser.add_argument("--seed", type=int, default=SEED, help="Random seed for reproducible experiments.")
+    args = parser.parse_args()
+
+    generate_all(args.data_dir, args.students, args.event_days, args.seed)
+    print(f"Sample training data generated in {args.data_dir} with {args.students} students.")

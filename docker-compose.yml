@@ -1,0 +1,57 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: smart-care-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_DATABASE: smart_care_training
+      MYSQL_USER: training_user
+      MYSQL_PASSWORD: training_pass
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-utraining_user", "-ptraining_pass"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  importer:
+    build: .
+    container_name: smart-care-importer
+    command: python scripts/import_to_mysql.py
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: training_user
+      DB_PASSWORD: training_pass
+      DB_NAME: smart_care_training
+      DATA_DIR: /project/data
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  web:
+    build: .
+    container_name: smart-care-web
+    environment:
+      DATA_SOURCE: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: training_user
+      DB_PASSWORD: training_pass
+      DB_NAME: smart_care_training
+      TZ: Asia/Shanghai
+    ports:
+      - "5001:5000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      importer:
+        condition: service_completed_successfully
+
+volumes:
+  mysql_data:
